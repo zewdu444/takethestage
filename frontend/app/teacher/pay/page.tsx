@@ -15,6 +15,7 @@ interface Profile {
 }
 
 const RegisterPage: React.FC = () => {
+  let [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -70,6 +71,7 @@ const RegisterPage: React.FC = () => {
   }, []);
 
   const handleChapa = async () => {
+    setLoading(true);
     if (!profile) {
       setError("Profile data is not available.");
       return;
@@ -98,17 +100,17 @@ const RegisterPage: React.FC = () => {
         phone_number: profile.phone_number || "",
         tx_ref: referenceNumber,
         callback_url: `https://takethestage-backend.vercel.app/teachers/verify?payment_id=${profile.id}`,
-        return_url: `http://localhost:3000/teacher/pay/success?$payment_id=${profile.id}`,
+        return_url: `${window.location.origin}/teacher/pay/success?$payment_id=${profile.id}`,
         customization: {
           title: "fee",
           description: "teacher payment ",
         },
       };
       console.log(body, "body");
-      const response = await axios.post(
-        "localhost:3002/admins/initialize-payment",
-        body
-      );
+
+      const baseUrl = `${window.location.origin}/student/auth/register/chapa`;
+
+      const response = await axios.post(baseUrl, body);
       if (
         response.data &&
         response.data.data &&
@@ -126,13 +128,14 @@ const RegisterPage: React.FC = () => {
 
   const handlePayment = () => {
     handleChapa();
+    setLoading(true);
   };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-2xl mx-4">
         <h2 className="text-2xl font-bold mb-4 text-indigo-600">
-          You have to pay 125 for application fee
+          You have to pay 115 for application fee
         </h2>
         {error && <p className="text-red-500 mb-4">{error}</p>}
         <Button

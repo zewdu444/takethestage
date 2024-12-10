@@ -45,7 +45,7 @@ const SignInPage: React.FC = () => {
       }
 
       const response = await axios.post<LoginResponse>(
-        "http://https://takethestage-backend.vercel.app/teachers/login",
+        "https://takethestage-backend.vercel.app/teachers/login",
         { email, password },
         {}
       );
@@ -70,8 +70,10 @@ const SignInPage: React.FC = () => {
           secure: process.env.NODE_ENV === "production",
           sameSite: "Strict",
         });
-
-        router.push("/teacher/news");
+        if (is_teacher) router.push("/teacher/news");
+        else {
+          router.push("/teacher/pay");
+        }
       }
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {

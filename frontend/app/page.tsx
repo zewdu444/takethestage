@@ -133,16 +133,6 @@ const LandingPage: React.FC = () => {
               </a>
             </li>
             <li>
-              <a href="#programs" className="hover:text-blue-600">
-                Programs
-              </a>
-            </li>
-            <li>
-              <a href="#faculty" className="hover:text-blue-600">
-                Faculty
-              </a>
-            </li>
-            <li>
               <a href="#contact" className="hover:text-blue-600">
                 Contact
               </a>
@@ -207,7 +197,7 @@ const LandingPage: React.FC = () => {
       {/* News Section */}
       <section id="news" className="w-full py-20 bg-gray-100 text-center">
         <h2 className="text-4xl font-bold mb-10 text-blue-600">
-          What&apos;s New
+          What&apos;s New 
         </h2>
         <NewsList />
       </section>

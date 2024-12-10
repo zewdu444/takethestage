@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"; // Import ShadCN Card 
 import { Loader2 } from "lucide-react";
 
 const classTypeMapping = {
-  "4-9": "5678",
+  "6-9": "5678",
   "9-10": "910",
   "11-12": "11-12",
   college: "college",
@@ -23,6 +23,8 @@ const Signup: React.FC = () => {
   const router = useRouter();
 
   const [regions, setRegions] = useState<{ id: number; name: string }[]>([]);
+  const [city, setCity] = useState<{ id: number; name: string }[]>([]);
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const togglePasswordVisibility = () => {
@@ -44,6 +46,21 @@ const Signup: React.FC = () => {
     fetchRegions();
   }, []);
 
+  useEffect(() => {
+    const fetchCity = async () => {
+      try {
+        const response = await axios.get(
+          "https://takethestage-backend.vercel.app/admins/city"
+        );
+        console.log("mk", response.data);
+        setCity(response.data);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching regions:", err);
+      }
+    };
+    fetchCity();
+  }, []);
   const [formData, setFormData] = useState({
     email: "",
     grade: "",
@@ -51,7 +68,7 @@ const Signup: React.FC = () => {
     last_name: "",
     sex: "",
     region_id: "",
-    city: "",
+    city_id: "",
     woreda: "",
     phone_number: "",
     parents_phone_number: "",
@@ -167,7 +184,6 @@ const Signup: React.FC = () => {
               value={formData.sex}
               onChange={handleChange}
               className="w-full p-2 border rounded  bg-white"
-              required
             >
               <option value="">Select Sex</option>
               <option value="male">Male</option>
@@ -187,7 +203,23 @@ const Signup: React.FC = () => {
                 </option>
               ))}
             </select>
-            <Input
+
+            <select
+              name="city_id"
+              value={formData.city_id}
+              onChange={handleChange}
+              className="w-full p-2 border rounded duration-300 ease-in-out focus:ring-2 focus:outline-none bg-white"
+              required
+            >
+              <option value="">Select City</option>
+              {city.map((region) => (
+                <option key={region.id} value={region.name}>
+                  {region.name}
+                </option>
+              ))}
+            </select>
+
+            {/* <Input
               type="text"
               name="city"
               placeholder="City"
@@ -195,7 +227,7 @@ const Signup: React.FC = () => {
               onChange={handleChange}
               className="w-full p-2 border rounded transition-colors duration-300 ease-in-out focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               required
-            />
+            /> */}
             <Input
               type="text"
               name="woreda"

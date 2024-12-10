@@ -57,7 +57,7 @@ const TeacherSignUp: React.FC = () => {
     const fetchInstitutions = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:3002/admins/institution"
+          "https://takethestage-backend.vercel.app/admins/institution"
         );
         setInstitutions(response.data);
         console.log(response.data, "data");
@@ -99,7 +99,7 @@ const TeacherSignUp: React.FC = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:3002/teachers/sign-up",
+        "https://takethestage-backend.vercel.app/teachers/sign-up",
         formDataToSend,
         {
           headers: {
@@ -276,14 +276,25 @@ const TeacherSignUp: React.FC = () => {
             className="mb-4 bg-white"
           />
 
-          <Input
-            type="file"
-            name="cv"
-            onChange={handleFileChange}
-            required
-            placeholder="Upload CV"
-            className="mb-4"
-          />
+          <div className="mb-4">
+            <div className="relative">
+              <input
+                type="file"
+                name="cv"
+                id="cv"
+                onChange={handleFileChange}
+                required
+                className="hidden"
+              />
+              <label
+                htmlFor="cv"
+                className="cursor-pointer w-full bg-gray-200 border border-gray-300 text-gray-700 py-2 px-4 text-center rounded-md hover:bg-gray-300"
+              >
+                Click to Upload CV
+              </label>
+            </div>
+          </div>
+
           <Button type="submit" className="w-full">
             Submit
           </Button>

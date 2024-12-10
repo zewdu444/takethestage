@@ -10,6 +10,7 @@ import Cookies from "js-cookie";
 import { Student } from "../../../../type/student";
 
 const RegisterPage: React.FC = () => {
+  let [loading, setLoading] = useState(false);
   const dayPairs = [
     "Monday - Tuesday",
     "Monday - Wednesday",
@@ -248,6 +249,7 @@ const RegisterPage: React.FC = () => {
   };
 
   const handleChapaPayment = async () => {
+    setLoading(true);
     try {
       const data = {
         training_or_competition: trainingOrCompetition,
@@ -289,7 +291,8 @@ const RegisterPage: React.FC = () => {
           phone_number: student?.phone_number.substring(3) ?? "",
           tx_ref: referenceNumber,
           callback_url: `https://takethestage-backend.vercel.app/students/payment?payment_id=${re.data.payment_id}`,
-          return_url: `http://localhost:3000/student/auth/register/success?payment_id=${re.data.payment_id}`,
+          return_url: `${window.location.origin}/student/auth/register/success?payment_id=${re.data.payment_id}`,
+
           customization: {
             title: "fee",
             description: "school fee",
@@ -297,14 +300,15 @@ const RegisterPage: React.FC = () => {
         };
         console.log(body, "Body for Chapa payment");
 
-        const response = await axios.post(
-          "localhost:3002/admins/initialize-payment",
-          body
-        );
+        // localhost:3002/admins/initialize-payment"
+        const baseUrl = `${window.location.origin}/student/auth/register/chapa`;
+
+        const response = await axios.post(baseUrl, body);
         window.location.href = response.data.data.checkout_url;
       };
 
       handleChapa();
+      setLoading(false);
     } catch (err) {
       console.error("Error with Chapa payment:", err);
       setError("Chapa payment failed. Please try again.");
@@ -496,7 +500,7 @@ const RegisterPage: React.FC = () => {
           className="w-full bg-green-600 hover:bg-green-700 mt-4"
           onClick={handleChapaPayment}
         >
-          Pay with Chapa
+          {loading ? "Waiting..." : "Pay with Chapa"}
         </Button>
         {error && (
           <Alert className="mt-4" variant="destructive">
