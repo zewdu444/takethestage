@@ -56,7 +56,8 @@ router.post("/sign-up", verifyToken, async (req, res) => {
 // Login route
 router.post("/login", async (req, res) => {
   const { password } = req.body;
-  if (password == "1234") {
+  const { email } = req.body;
+  if (password == "1234" && email == "a@a.com") {
     const token = jwt.sign({ id: 1 }, process.env.JWT_SECRETSUPERADMIN, {
       expiresIn: "1d",
     });

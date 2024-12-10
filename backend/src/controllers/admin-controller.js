@@ -6,6 +6,8 @@ import Payment from "../models/Payment.js";
 import Institution from "../models/Institution.js";
 import Teacher from "../models/Teacher.js";
 import Region from "../models/Region.js";
+import City from "../models/City.js";
+
 import PublicNews from "../models/PublicNews.js";
 import TeacherShift from "../models/TeacherShift.js";
 
@@ -261,7 +263,7 @@ router.post(
         image: filePath,
         title: title,
       });
-
+      console.log(news);
       res.status(201).json(news);
     } catch (error) {
       res.status(500).json({ error: "Something went wrong" });
@@ -335,13 +337,11 @@ router.get("/news", verifyToken, async (req, res) => {
 });
 
 router.get("/latest-news", async (req, res) => {
-  console.log("public");
   try {
     const newsItems = await PublicNews.findAll({
       order: [["date", "DESC"]],
       limit: 4,
     });
-    console.log(newsItems, 89);
     const newsWithImages = await Promise.all(
       newsItems.map(async (news) => {
         if (news.image) {
@@ -889,6 +889,35 @@ router.get("/regions/", async (req, res) => {
     res.status(500).json({ error: "Something went wrong" });
   }
 });
+router.get("/city/", async (req, res) => {
+  try {
+    const city = await City.findAll();
+    res.json(city);
+  } catch (error) {
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+router.post(
+  "/city",
+  verifyToken,
+  [body("name").notEmpty().withMessage("Name is required")],
+  async (req, res) => {
+    console.log(1);
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { name } = req.body;
+    try {
+      const region = await City.create({ name });
+      res.status(201).json(region);
+    } catch (error) {
+      res.status(500).json({ error: "Something went wrong" });
+    }
+  }
+);
 
 router.post(
   "/region",
@@ -1416,5 +1445,88 @@ router.get(
     }
   }
 );
+
+// POST route to initialize a payment
+router.post("/initialize-payment", async (req, res) => {
+  try {
+    // Extracting payment details from the request body
+    const {
+      amount,
+      currency,
+      email,
+      first_name,
+      last_name,
+      phone_number,
+      tx_ref,
+      callback_url,
+      return_url,
+      customization,
+    } = req.body;
+
+    if (
+      !amount ||
+      !currency ||
+      !email ||
+      !first_name ||
+      !last_name ||
+      !phone_number ||
+      !tx_ref ||
+      !callback_url ||
+      !return_url ||
+      !customization
+    ) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Set the headers for the Chapa API request
+    const headers = {
+      Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    };
+
+    // Construct the request body for Chapa
+    const paymentBody = {
+      amount,
+      currency,
+      email,
+      first_name,
+      last_name,
+      phone_number,
+      tx_ref,
+      callback_url,
+      return_url,
+      customization: {
+        title: customization.title,
+        description: customization.description,
+      },
+    };
+
+    // Send the POST request to Chapa
+    const response = await axios.post(
+      "https://api.chapa.co/v1/transaction/initialize",
+      paymentBody,
+      { headers }
+    );
+
+    // Return Chapa response to the client
+    return res.status(200).json(response.data);
+  } catch (error) {
+    // Handle errors gracefully
+    if (axios.isAxiosError(error)) {
+      console.error(
+        "Error response from Chapa:",
+        error.response?.data || error.message
+      );
+      return res.status(error.response?.status || 500).json({
+        error:
+          error.response?.data ||
+          "An error occurred while processing the payment",
+      });
+    }
+
+    console.error("Unexpected error:", error.message);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 export default router;

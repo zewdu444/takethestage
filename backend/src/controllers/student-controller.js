@@ -12,11 +12,11 @@ import Region from "../models/Region.js";
 import Result from "../models/Result.js";
 import { body, validationResult } from "express-validator";
 import { fileURLToPath } from "url";
-import uploads from './image-upload.js'
+import uploads from "./image-upload.js";
 import { Op } from "sequelize";
 
-import { Chapa } from 'chapa-nodejs';
-import axios from 'axios';
+import { Chapa } from "chapa-nodejs";
+import axios from "axios";
 
 const chapa = new Chapa({
   secretKey: process.env.CHAPA_SECRET_KEY,
@@ -26,7 +26,7 @@ const router = Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 function validateRegistration() {
-  return [ 
+  return [
     body("training_or_competition")
       .trim()
       .escape()
@@ -56,21 +56,13 @@ function validateRegistration() {
 
 function validateStudent() {
   return [
-  body("class_type")
-    .trim()
-    .escape()
-    .isIn(['5678', '910', '11-12', 'college', 'university', 'masters'])
-    .withMessage("Invalid value for class_type"),
-    body("email")
+    body("class_type")
       .trim()
       .escape()
-      .isEmail()
-      .withMessage("Invalid email format"),
-    body("grade")
-      .trim()
-      .escape()
-      .notEmpty()
-      .withMessage("Grade is required"),
+      .isIn(["5678", "910", "11-12", "college", "university", "masters"])
+      .withMessage("Invalid value for class_type"),
+    body("email").trim().escape().isEmail().withMessage("Invalid email format"),
+    body("grade").trim().escape().notEmpty().withMessage("Grade is required"),
     body("first_name")
       .trim()
       .escape()
@@ -91,16 +83,8 @@ function validateStudent() {
       .escape()
       .isInt()
       .withMessage("Region ID must be an integer"),
-    body("city")
-      .trim()
-      .escape()
-      .notEmpty()
-      .withMessage("City is required"),
-    body("woreda")
-      .trim()
-      .escape()
-      .notEmpty()
-      .withMessage("Woreda is required"),
+    body("city_id").trim().escape().notEmpty().withMessage("City is required"),
+    body("woreda").trim().escape().notEmpty().withMessage("Woreda is required"),
     body("phone_number")
       .trim()
       .escape()
@@ -121,7 +105,6 @@ function validateStudent() {
 router.get("/", (req, res) => {
   res.json({ message: "22Welcasdfome to the School Management System API" });
 });
-
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -149,7 +132,6 @@ const storage = multer.diskStorage({
   },
 });
 
-
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ["image/jpeg", "image/png", "image/gif"];
   if (!allowedTypes.includes(file.mimetype)) {
@@ -165,7 +147,6 @@ const upload = multer({
   limits: { fileSize: 3 * 1024 * 1024 },
   fileFilter,
 });
-
 
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -188,27 +169,34 @@ const verifyToken = (req, res, next) => {
 
 router.post("/sign-up", validateStudent(), async (req, res) => {
   const errors = validationResult(req);
-
-    console.log(req.body)
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (token) {
+    return res.json({ success: false });
+  }
+  console.log(req.body);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
   try {
-    const { email,
+    const {
+      email,
       grade,
       first_name,
       last_name,
       sex,
       region_id,
-      city,
+      city_id,
       woreda,
       phone_number,
       parents_phone_number,
-      password,class_type } = req.body; 
+      password,
+      class_type,
+    } = req.body;
 
     const existingStudent = await Student.findOne({ where: { email } });
     if (existingStudent) {
-      console.log(222)
+      console.log(222);
       return res.status(400).json({ error: "Email already exists" });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -221,24 +209,19 @@ router.post("/sign-up", validateStudent(), async (req, res) => {
       last_name,
       sex,
       region_id,
-      city,
+      city: city_id,
       woreda,
       phone_number,
       parents_phone_number,
       class_type,
-    }); 
+    });
     res.status(201).json({ success: true });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-
-
-
-
-router.put("/update-profile", verifyToken,  async (req, res) => {
-
+router.put("/update-profile", verifyToken, async (req, res) => {
   try {
     const studentId = req.user.id;
     const {
@@ -266,7 +249,6 @@ router.put("/update-profile", verifyToken,  async (req, res) => {
       student.email = email;
     }
 
-   
     student.grade = grade;
     student.first_name = first_name;
     student.last_name = last_name;
@@ -284,27 +266,35 @@ router.put("/update-profile", verifyToken,  async (req, res) => {
   }
 });
 
-
-
 router.post(
   "/register",
   verifyToken,
-  upload.single('receipt'),
+  upload.single("receipt"),
   async (req, res) => {
     if (req.fileValidationError) {
       return res.status(400).json({ error: req.fileValidationError });
     }
-    const filePath = path.join(__dirname, 'receipts', req.file && req.file.filename || "");
+    const filePath = path.join(
+      __dirname,
+      "receipts",
+      (req.file && req.file.filename) || ""
+    );
 
     if (fs.existsSync(filePath)) {
-      return res.status(400).json({ error: "File with the same name already exists" });
+      return res
+        .status(400)
+        .json({ error: "File with the same name already exists" });
     }
-    const receiptPath = req.file ? path.join(req.user.id.toString(), req.file.filename) : null;
+    const receiptPath = req.file
+      ? path.join(req.user.id.toString(), req.file.filename)
+      : null;
     if (receiptPath == null) {
       return res.status(400).json({ error: "Error uploading image" });
     }
     try {
-      const chosenInstitution = await Institution.findByPk(req.body.chosen_institution);
+      const chosenInstitution = await Institution.findByPk(
+        req.body.chosen_institution
+      );
       if (!chosenInstitution) {
         if (receiptPath) {
           fs.unlink(receiptPath, (err) => {
@@ -318,52 +308,51 @@ router.post(
     } catch (error) {
       return res.status(400).json({ error: error.message });
     }
-    try{
-    const { training_or_competition } = req.body;
-    const cv = req.file ? req.file.filename : null;
-    console.log(req.body, 'request body');
+    try {
+      const { training_or_competition } = req.body;
+      const cv = req.file ? req.file.filename : null;
+      console.log(req.body, "request body");
 
-    if (  !training_or_competition ) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
-
-    let parsedDays = [];
-
-    if (req.body.day) {
-      parsedDays = [JSON.parse(req.body.day)];
-    }
-
-    // console.log(parsed)
-    if (req.body.day_pair) {
-      const dayPairs = JSON.parse(req.body.day_pair);
-      
-      for (const [day, shift] of Object.entries(dayPairs.shifts)) {
-        parsedDays.push({ day, shift });
+      if (!training_or_competition) {
+        return res.status(400).json({ error: "All fields are required" });
       }
-    }
-  console.log(parsedDays, 'parsedDays')
 
+      let parsedDays = [];
 
-    const studentId = req.user.id;
-    const updateData = {
-      training_or_competition: req.body.training_or_competition,
-      chosen_institution: req.body.chosen_institution,
-      date: new Date(),
-      shift1: req.body.shift1,
-      shift2: req.body.shift2,
-      date1: req.body.date1,
-      date2: req.body.date2,
-    };
+      if (req.body.day) {
+        parsedDays = [JSON.parse(req.body.day)];
+      }
 
-    if (training_or_competition === 'competition') {
-      updateData.shift1 = parsedDays[0]?.shift;
-      updateData.date1 = parsedDays[0]?.day;
-    } else {
-      updateData.shift1 = parsedDays[0]?.shift;
-      updateData.date1 = parsedDays[0]?.day;
-      updateData.shift2 = parsedDays[1]?.shift;
-      updateData.date2 = parsedDays[1]?.day;
-    }
+      // console.log(parsed)
+      if (req.body.day_pair) {
+        const dayPairs = JSON.parse(req.body.day_pair);
+
+        for (const [day, shift] of Object.entries(dayPairs.shifts)) {
+          parsedDays.push({ day, shift });
+        }
+      }
+      console.log(parsedDays, "parsedDays");
+
+      const studentId = req.user.id;
+      const updateData = {
+        training_or_competition: req.body.training_or_competition,
+        chosen_institution: req.body.chosen_institution,
+        date: new Date(),
+        shift1: req.body.shift1,
+        shift2: req.body.shift2,
+        date1: req.body.date1,
+        date2: req.body.date2,
+      };
+
+      if (training_or_competition === "competition") {
+        updateData.shift1 = parsedDays[0]?.shift;
+        updateData.date1 = parsedDays[0]?.day;
+      } else {
+        updateData.shift1 = parsedDays[0]?.shift;
+        updateData.date1 = parsedDays[0]?.day;
+        updateData.shift2 = parsedDays[1]?.shift;
+        updateData.date2 = parsedDays[1]?.day;
+      }
 
       const [updated] = await Student.update(updateData, {
         where: { id: studentId },
@@ -372,7 +361,7 @@ router.post(
       if (!updated) {
         return res.status(404).json({ error: "Student not found" });
       }
-      console.log(updateData,'updated')
+      console.log(updateData, "updated");
       const paymentData = {
         student_id: studentId,
         amount: req.body.amount,
@@ -394,27 +383,21 @@ router.post(
   }
 );
 
-
-router.post(
-  "/registerwithchapa",
-  verifyToken,
-  async (req, res) => {
-   
-
-    
-    try { 
-      const chosenInstitution = await Institution.findByPk(req.body.chosen_institution);
-      if (!chosenInstitution) {
-        
-        return res.status(400).json({ error: "Invalid institution" });
-      }
-    } catch (error) {
-      return res.status(400).json({ error: error.message });
+router.post("/registerwithchapa", verifyToken, async (req, res) => {
+  try {
+    const chosenInstitution = await Institution.findByPk(
+      req.body.chosen_institution
+    );
+    if (!chosenInstitution) {
+      return res.status(400).json({ error: "Invalid institution" });
     }
-    try{
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+  try {
     const { training_or_competition } = req.body;
 
-    if (  !training_or_competition ) {
+    if (!training_or_competition) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -426,12 +409,11 @@ router.post(
 
     if (req.body.day_pair) {
       const dayPairs = JSON.parse(req.body.day_pair);
-      
+
       for (const [day, shift] of Object.entries(dayPairs.shifts)) {
         parsedDays.push({ day, shift });
       }
     }
-
 
     const studentId = req.user.id;
     const updateData = {
@@ -445,7 +427,7 @@ router.post(
     };
     const tx_ref = await chapa.genTxRef();
 
-    if (training_or_competition === 'competition') {
+    if (training_or_competition === "competition") {
       updateData.shift1 = parsedDays[0]?.shift;
       updateData.date1 = parsedDays[0]?.day;
     } else {
@@ -455,42 +437,43 @@ router.post(
       updateData.date2 = parsedDays[1]?.day;
     }
 
-      const [updated] = await Student.update(updateData, {
-        where: { id: studentId },
-      });
+    const [updated] = await Student.update(updateData, {
+      where: { id: studentId },
+    });
 
-      if (!updated) {
-        return res.status(404).json({ error: "Student not found" });
-      }
-      console.log(updateData,'updated')
-      const paymentData = {
-        tx_ref:tx_ref,
-        student_id: studentId,
-        amount: req.body.amount,
-        date: new Date(),
-        status: "pending",
-        picture: "",
-      };
-
-      const payment = await Payment.create(paymentData);
-      console.log(tx_ref,'reff')
-      if (payment) {
-
-        console.log('succccc') 
-
-        res.status(200).json({ success: true, updateData: updateData,tx_ref:tx_ref ,payment_id:payment.id });
-      } else {
-        res.status(400).json({ error: "Error creating payment" });
-      }
-    } catch (error) {
-      res.status(400).json({ error: "unknown error", error: error.message });
+    if (!updated) {
+      return res.status(404).json({ error: "Student not found" });
     }
+    console.log(updateData, "updated");
+    const paymentData = {
+      tx_ref: tx_ref,
+      student_id: studentId,
+      amount: req.body.amount,
+      date: new Date(),
+      status: "pending",
+      picture: "",
+    };
+
+    const payment = await Payment.create(paymentData);
+    console.log(tx_ref, "reff");
+    if (payment) {
+      console.log("succccc");
+
+      res.status(200).json({
+        success: true,
+        updateData: updateData,
+        tx_ref: tx_ref,
+        payment_id: payment.id,
+      });
+    } else {
+      res.status(400).json({ error: "Error creating payment" });
+    }
+  } catch (error) {
+    res.status(400).json({ error: "unknown error", error: error.message });
   }
+});
 
-);
-
-
-router.post("/login", async (req, res) => { 
+router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
     const student = await Student.findOne({ where: { email: email } });
@@ -506,14 +489,16 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign({ id: student.id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
-    console.log(student.class_id,'class_id')
-    res.status(200).json({ token :token,role:'student',is_student:student.class_id!=null });
+    console.log(student.class_id, "class_id");
+    res.status(200).json({
+      token: token,
+      role: "student",
+      is_student: student.class_id != null,
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
-
-
 
 router.get("/results", verifyToken, async (req, res) => {
   try {
@@ -526,7 +511,7 @@ router.get("/results", verifyToken, async (req, res) => {
 });
 
 router.get("/schools", verifyToken, async (req, res) => {
-  try { 
+  try {
     const studentId = req.user.id;
     const student = await Student.findByPk(studentId);
 
@@ -545,71 +530,74 @@ router.get("/schools", verifyToken, async (req, res) => {
   }
 });
 
-router.get('/profile', verifyToken, async (req, res) => {
+router.get("/profile", verifyToken, async (req, res) => {
   try {
     const studentId = req.user.id;
     let student = await Student.findByPk(studentId, {
-      attributes: { exclude: ['password','date'] }
+      attributes: { exclude: ["password", "date"] },
     });
     let classes = null;
     if (student.class_id != null) {
       classes = await Class.findByPk(student.class_id, {
-      attributes: ['name']
+        attributes: ["name"],
       });
     }
-    const region = await  Region.findByPk(student.region_id)
+    const region = await Region.findByPk(student.region_id);
 
-    
     if (!student) {
       return res.status(404).json({ error: "Student not found" });
     }
 
-    const chosenInstitution = await Institution.findByPk(student.chosen_institution, {
-      attributes: ['name']
-    });
+    const chosenInstitution = await Institution.findByPk(
+      student.chosen_institution,
+      {
+        attributes: ["name"],
+      }
+    );
 
-
-    const studentProfile = { 
+    const studentProfile = {
       ...student.toJSON(),
-      region: region ? region.name : 'not available',
-      chosen_institution: chosenInstitution ? chosenInstitution.name : 'not available',
-      class: classes ? classes.name : null
+      region: region ? region.name : "not available",
+      chosen_institution: chosenInstitution
+        ? chosenInstitution.name
+        : "not available",
+      class: classes ? classes.name : null,
     };
-    console.log(studentProfile,'profile')
-    res.status(200).json({profile:studentProfile});
+    console.log(studentProfile, "profile");
+    res.status(200).json({ profile: studentProfile });
   } catch (error) {
     console.error(error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
+router.post(
+  "/upload-profile",
+  verifyToken,
+  uploads.single("profile"),
+  async (req, res) => {
+    try {
+      const studentId = req.user.id;
+      const profilePath = req.file ? req.file.filename : null;
 
+      if (!profilePath) {
+        return res.status(400).json({ error: "Error uploading image" });
+      }
 
+      const student = await Student.findByPk(studentId);
+      if (!student) {
+        return res.status(404).json({ error: "Student not found" });
+      }
 
+      student.profile = profilePath;
+      await student.save();
 
-router.post("/upload-profile", verifyToken, uploads.single('profile'), async (req, res) => {
-  try {
-
-    const studentId = req.user.id;
-    const profilePath = req.file ? req.file.filename:null;
-
-    if (!profilePath) {
-      return res.status(400).json({ error: "Error uploading image" });
+      res.status(200).json({ success: true, profile: profilePath });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
     }
-
-    const student = await Student.findByPk(studentId);
-    if (!student) {
-      return res.status(404).json({ error: "Student not found" });
-    }
-
-    student.profile = profilePath;
-    await student.save();
-
-    res.status(200).json({ success: true, profile: profilePath });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
-});
+);
 
 router.get("/profile-image/", verifyToken, async (req, res) => {
   try {
@@ -621,7 +609,14 @@ router.get("/profile-image/", verifyToken, async (req, res) => {
     }
 
     const imagePath = student.profile
-      ? path.join(__dirname, "..", "..", "profile", studentId.toString(), student.profile)
+      ? path.join(
+          __dirname,
+          "..",
+          "..",
+          "profile",
+          studentId.toString(),
+          student.profile
+        )
       : null;
 
     if (!imagePath || !fs.existsSync(imagePath)) {
@@ -634,69 +629,67 @@ router.get("/profile-image/", verifyToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});   
+});
 
+router.post("/payment", verifyToken, async (req, res) => {
+  const studentId = req.user.id;
+  const { payment_id } = req.body;
+  const student = await Student.findByPk(studentId, {
+    attributes: { exclude: ["password"] },
+  });
 
-
-router.post(
-  "/payment", verifyToken,
-  async (req, res) => {
-    const studentId = req.user.id;
-    const { payment_id } = req.body;
-    const student = await Student.findByPk(studentId, {
-      attributes: { exclude: ["password"] },
-    });
-
-    // Find the payment by ID
-    const payment = await Payment.findByPk(payment_id);
-    if (!payment || payment.student_id != studentId) {
-      return res.status(404).json({ error: "Payment not found" });
-    }
-
-    const tx_ref = payment.tx_ref;
-
-    try {
-      const url = `https://api.chapa.co/v1/transaction/verify/${tx_ref}`;
-      const headers = {
-        'Authorization': `Bearer ${process.env.CHAPA_SECRET_KEY}`,
-        'Content-Type': 'application/json'
-      };
-
-      // Make a GET request to verify the transaction
-      const response = await axios.get(url, { headers });
-      const data = response.data;
-
-      if (data.status === 'success' && data.data.status === 'success') {
-        payment.status = 'paid';
-        await payment.save();
-
-        if (!student) {
-          return res.status(404).json({ error: "Student not found" });
-        }
-
-        student.payment_status = 'completed';
-        await student.save();  // Make sure to save the student after updating status
-        if (student.class_id) {
-          return res.status(200).json({ message: "Payment verified successfully", payment });
-        }
-        await processAndAssignClass(student);
-
-        return res.status(200).json({ message: "Payment verified successfully", payment });
-      } else {
-        return res.status(400).json({ error: "Payment verification failed", details: data });
-      }
-    } catch (error) {
-      console.error("Error during payment verification:", error.message);
-      return res.status(500).json({ error: error.message });
-    }
+  // Find the payment by ID
+  const payment = await Payment.findByPk(payment_id);
+  if (!payment || payment.student_id != studentId) {
+    return res.status(404).json({ error: "Payment not found" });
   }
-);
 
+  const tx_ref = payment.tx_ref;
 
+  try {
+    const url = `https://api.chapa.co/v1/transaction/verify/${tx_ref}`;
+    const headers = {
+      Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
+      "Content-Type": "application/json",
+    };
 
+    // Make a GET request to verify the transaction
+    const response = await axios.get(url, { headers });
+    const data = response.data;
 
- async function processAndAssignClass(student) {
-  console.log('process and assign class')
+    if (data.status === "success" && data.data.status === "success") {
+      payment.status = "paid";
+      await payment.save();
+
+      if (!student) {
+        return res.status(404).json({ error: "Student not found" });
+      }
+
+      student.payment_status = "completed";
+      await student.save(); // Make sure to save the student after updating status
+      if (student.class_id) {
+        return res
+          .status(200)
+          .json({ message: "Payment verified successfully", payment });
+      }
+      await processAndAssignClass(student);
+
+      return res
+        .status(200)
+        .json({ message: "Payment verified successfully", payment });
+    } else {
+      return res
+        .status(400)
+        .json({ error: "Payment verification failed", details: data });
+    }
+  } catch (error) {
+    console.error("Error during payment verification:", error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+async function processAndAssignClass(student) {
+  console.log("process and assign class");
   const shift = student.shift1; // Only one shift
   const days = [student.date1, student.date2].filter(Boolean); // Handle multiple days
   const trainingOrCompetition = student.training_or_competition;
@@ -734,8 +727,8 @@ router.post(
     classes.map((cls) => cls.name)
   );
 
-  const intersectionClassNames = availableClassesByDay.reduce(
-    (acc, curr) => acc.filter((name) => curr.includes(name))
+  const intersectionClassNames = availableClassesByDay.reduce((acc, curr) =>
+    acc.filter((name) => curr.includes(name))
   );
 
   if (intersectionClassNames.length === 0) {
@@ -781,8 +774,7 @@ router.post(
   }
 }
 
-
-router.get('/payment-status', verifyToken, async (req, res) => {
+router.get("/payment-status", verifyToken, async (req, res) => {
   const studentId = req.user.id;
   const student = await Student.findByPk(studentId);
 
@@ -790,44 +782,49 @@ router.get('/payment-status', verifyToken, async (req, res) => {
     return res.status(404).json({ error: "Student not found" });
   }
 
-  const payments = await Payment.findAll({ where: { student_id: studentId, status: 'pending' } });
+  const payments = await Payment.findAll({
+    where: { student_id: studentId, status: "pending" },
+  });
   if (!payments || payments.length === 0) {
     return res.status(404).json({ error: "Pending payments not found" });
   }
 
   try {
-
     for (const payment of payments) {
-      console.log(payment.tx_ref,process.env.CHAPA_SECRET_KEY)
+      console.log(payment.tx_ref, process.env.CHAPA_SECRET_KEY);
       const tx_ref = payment.tx_ref;
       const url = `https://api.chapa.co/v1/transaction/verify/${tx_ref}`;
       const headers = {
-        'Authorization': `Bearer ${process.env.CHAPA_SECRET_KEY}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${process.env.CHAPA_SECRET_KEY}`,
+        "Content-Type": "application/json",
       };
 
       try {
         const response = await axios.get(url, { headers });
         const data = response.data;
-        if (data.status !== 'success' || data.data.status !== 'success') {
-          return res.status(400).json({ error: "Payment verification failed", details: data });
+        if (data.status !== "success" || data.data.status !== "success") {
+          return res
+            .status(400)
+            .json({ error: "Payment verification failed", details: data });
         }
       } catch (error) {
         console.error("Error during payment verification:", error.message);
-        return res.status(500).json({ error: 'Internal server error', details: error.message });
+        return res
+          .status(500)
+          .json({ error: "Internal server error", details: error.message });
       }
       const data = response.data;
-      console.log(data, 'data');
+      console.log(data, "data");
 
-      if (data.status === 'success' && data.data.status === 'success') {
-        payment.status = 'paid';
+      if (data.status === "success" && data.data.status === "success") {
+        payment.status = "paid";
         await payment.save();
       }
     }
 
-    const allPaid = payments.every(payment => payment.status === 'paid');
+    const allPaid = payments.every((payment) => payment.status === "paid");
     if (allPaid) {
-      student.payment_status = 'completed';
+      student.payment_status = "completed";
       await student.save();
 
       if (!student.class_id) {
@@ -840,7 +837,9 @@ router.get('/payment-status', verifyToken, async (req, res) => {
     }
   } catch (error) {
     console.error("Error during payment verification:", error.message);
-    return res.status(500).json({ error: 'Internal server error', details: error.message });
+    return res
+      .status(500)
+      .json({ error: "Internal server error", details: error.message });
   }
 });
 
